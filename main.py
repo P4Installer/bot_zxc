@@ -220,10 +220,10 @@ async def success_payment(m: Message, bot: Bot):
     try:
         target = int(p[2]) if p[2].replace('-', '').isdigit() else p[2]
         await bot(SendGift(gift_id=p[1], user_id=target, text=p[3]))
-        await m.answer("✅ Подарок успешно отправлен!")
+        await m.answer("✅ Подарок успешно отправлен! не забудьте оставить отзыв в @Delete_Gifts")
     except Exception as e:
         logging.error(f"Ошибка: {e}")
-        await m.answer("❌ Ошибка при отправке подарка.")
+        await m.answer("❌ Ошибка при отправке подарка. Обратитесь в поддержку.")
 
 @router.callback_query(F.data == "back_start")
 async def back_to_main_callback(callback: CallbackQuery, state: FSMContext, bot: Bot):
