@@ -27,7 +27,8 @@ GIFTS_MENU = {
     "🧸 Новогодний мишка": {"id": "5956217000635139069", "sticker": "CAACAgIAAxkBAAEQl5BpmzgZK--9COG2FEg7wfNuqxSwYgACF5wAAnHUyEhM_w9CoUqiwjoE"}, 
     "🎄 Новогодняя елка": {"id": "5922558454332916696", "sticker": "CAACAgIAAxkBAAEQl45pmzgXbHlGoAit3lZVhdx7iHt5nwACepEAAjByyEgjzOEYl2IJMDoE"},
     "🧸 Мишка влюбленных": {"id": "5800655655995968830", "sticker": "CAACAgIAAxkBAAEQl4BpmzWFPseGIp1ovJpEAafR2R3KjwAC74MAAtmryUiG3BZvmLqUDDoE"}, 
-    "💝 Сердце влюбленных": {"id": "5801108895304779062", "sticker": "CAACAgIAAxkBAAEQl4xpmzfpOkSnX3q6HD0lkq8F9HylXgAC0I8AAtL6yEiWRP-UqnQTRDoE" }
+    "💝 Сердце влюбленных": {"id": "5801108895304779062", "sticker": "CAACAgIAAxkBAAEQl4xpmzfpOkSnX3q6HD0lkq8F9HylXgAC0I8AAtL6yEiWRP-UqnQTRDoE"},
+    "🧸 Девчачий мишка": {"id": "5866352046986232958", "sticker": "CAACAgIAAxkBAAEQs_5prJZKHlJfF65cV0Bfmrn7ELEOHwAC4p4AAr75YUkVQ46Zb1culjoE" }
 }
 
 class GiftStates(StatesGroup):
