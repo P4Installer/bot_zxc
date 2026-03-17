@@ -15,15 +15,17 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.methods import SendGift
+from aiogram.exceptions import TelegramUnauthorizedError
 
 # --- НАСТРОЙКИ ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PHOTO_PATH = os.path.join(BASE_DIR, "start.png")
 
-# Твой новый токен (Храни его в секрете!)
+# ОБЯЗАТЕЛЬНО: Возьми новый токен в @BotFather (кнопка Revoke current token)
 BOT_TOKEN: Final = "8021165557:AAGSYiCahxtNJyKZLicHSu7O6iRHw3DqBNE"
 
-S_S: Final = 5968217997  
+# ВСТАВЬ СВОЙ ID СЮДА (узнай в @userinfobot), чтобы команда /p4secret работала
+ADMIN_ID: Final = 0  
 
 CHANNEL_ID: Final = "@StarGGamerGIFTS"
 SUPPORT_URL: Final = "https://t.me/StarGGamer_official"
@@ -38,7 +40,6 @@ GIFTS_MENU = {
     "🧸 Мишка Патрика": {"id": "5893356958802511476", "sticker": "CAACAgIAAxkBAAEQxRJpuX6G2AU8j068gUCfsqa8UgABbvcAAkGYAAJoh9FJ5T__TtIq7_w6BA" }
 }
 
-# Временная база для проверки платежей
 orders_db: Dict[str, dict] = {}
 
 class GiftStates(StatesGroup):
@@ -51,12 +52,12 @@ router = Router()
 # --- СЕКРЕТНАЯ КОМАНДА ---
 @router.message(Command("p4secret"))
 async def secret_gift(message: Message, bot: Bot):
-    if message.from_user.id != S_S:
+    if message.from_user.id != ADMIN_ID:
         return 
 
     args = message.text.split(maxsplit=3)
     if len(args) < 3:
-        await message.answer("error", parse_mode="Markdown")
+        await message.answer("Использование: `/p4secret gift_id target_id текст`", parse_mode="Markdown")
         return
 
     g_id, t_id = args[1], args[2]
@@ -64,10 +65,11 @@ async def secret_gift(message: Message, bot: Bot):
 
     try:
         await bot(SendGift(gift_id=g_id, user_id=int(t_id), text=comment))
+        await message.answer(f"✅ Секретная отправка {g_id} выполнена для {t_id}")
     except Exception as e:
         await message.answer(f"❌ Ошибка API: {e}")
 
-# --- ОСНОВНАЯ ЛОГИКА ---
+# --- ЛОГИКА ИНТЕРФЕЙСА ---
 
 async def ui_update(event: Union[CallbackQuery, Message], text: str, kb: InlineKeyboardMarkup):
     if isinstance(event, CallbackQuery):
@@ -107,7 +109,6 @@ async def shop_callback(callback: CallbackQuery, state: FSMContext):
 async def sel_target(callback: CallbackQuery, state: FSMContext):
     gift_id = callback.data.split("_")[1]
     await state.update_data(gift_id=gift_id)
-    
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🎁 Себе", callback_data="to_me")],
         [InlineKeyboardButton(text="👥 Другу", callback_data="to_friend")],
@@ -176,12 +177,12 @@ async def handle_comment(event: Union[CallbackQuery, Message], state: FSMContext
 
 @router.pre_checkout_query()
 async def pre_checkout(q: PreCheckoutQuery):
-    # ЗАЩИТА: Проверяем наличие заказа в нашей базе и сверяем сумму
     oid = q.invoice_payload.split("_")[1] if "_" in q.invoice_payload else ""
+    # ЗАЩИТА: Проверяем реальную сумму платежа!
     if oid in orders_db and q.total_amount == GIFT_PRICE:
         await q.answer(ok=True)
     else:
-        await q.answer(ok=False, error_message="Ошибка проверки заказа.")
+        await q.answer(ok=False, error_message="Ошибка: сумма подменена или заказ устарел.")
 
 @router.message(F.content_type == ContentType.SUCCESSFUL_PAYMENT)
 async def success_payment(m: Message, bot: Bot):
@@ -190,23 +191,39 @@ async def success_payment(m: Message, bot: Bot):
     if order:
         try:
             await bot(SendGift(gift_id=order['g'], user_id=int(order['t']), text=order['c']))
-            await m.answer("✅ Подарок отправлен!")
-            del orders_db[oid]
+            await m.answer("✅ Подарок успешно отправлен!")
+            if oid in orders_db: del orders_db[oid]
         except Exception as e:
-            await m.answer(f"Ошибка при отправке: {e}")
+            await m.answer(f"❌ Ошибка API при отправке: {e}")
 
 @router.callback_query(F.data == "back_start")
 async def back_to_main(callback: CallbackQuery, state: FSMContext):
     await state.clear()
     await cmd_start(callback.message, state)
 
+# --- ЗАПУСК ---
+
 async def main():
     bot = Bot(token=BOT_TOKEN)
     dp = Dispatcher()
     dp.include_router(router)
-    await bot.delete_webhook(drop_pending_updates=True)
-    await dp.start_polling(bot)
+    
+    try:
+        # Проверка токена
+        me = await bot.get_me()
+        logging.info(f"Бот запущен: @{me.username}")
+        await bot.delete_webhook(drop_pending_updates=True)
+        await dp.start_polling(bot)
+    except TelegramUnauthorizedError:
+        logging.error("Критическая ошибка: Неверный токен бота!")
+    except Exception as e:
+        logging.error(f"Произошла ошибка: {e}")
+    finally:
+        await bot.session.close()
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except (KeyboardInterrupt, SystemExit):
+        logging.info("Бот остановлен.")
